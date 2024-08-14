@@ -1,3 +1,4 @@
+import uuid
 from typing import Any, Dict, Optional
 
 import replicate
@@ -7,6 +8,20 @@ load_dotenv()
 
 HEIGHT = 640
 WIDTH = 640
+
+
+class ImageGen:
+    def __init__(self, image: Any, model_id: str, prompt_id: str):
+        self.image = image
+        self.model_id = model_id
+        self.prompt_id = prompt_id
+        self.img_id = str(uuid.uuid4())
+
+    def filename(self):
+        return f"PMT:{self.prompt_id}-MDL:{self.model_id}-IMG:{self.img_id}"
+
+    def __repr__(self):
+        return self.filename()
 
 
 class TTIModel:

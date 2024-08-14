@@ -1,15 +1,21 @@
 import os
 from datetime import UTC, datetime
+from io import BytesIO
 
+import requests
 from dotenv import load_dotenv
+from PIL import Image
 from supabase import Client, create_client
+
+from adapter import ImageGen
 
 # Load environment variables
 load_dotenv()
 
 # Initialize Supabase client
 url: str = os.environ.get("SUPABASE_URL")
-key: str = os.environ.get("SUPABASE_KEY")
+# key: str = os.environ.get("SUPABASE_KEY")
+key: str = os.environ.get("SUPABASE_ADMIN_KEY")
 supabase: Client = create_client(url, key)
 
 
@@ -126,22 +132,31 @@ def read_models(id=None):
     return supabase.table("models").select("*").execute()
 
 
-prompt_data = write_prompt(
-    "An underwater scene of a vibrant coral reef teeming with life. Schools of tropical fish dart between the coral, while a curious octopus changes colors to blend with its surroundings. Shafts of sunlight penetrate the crystal-clear water."
-)
-model_data = write_model("StableDiffusion3", "Stable Diffusion 3")
-image_data = write_image(
-    prompt_data.data[0]["id"],
-    model_data.data[0]["id"],
-    "https://yycelpiurkvyijumsxcw.supabase.co/storage/v1/object/public/images_bucket/R8_SD3_00001.png",
-)
+def upload_image_to_bucket(image_url: str, metadata: dict):
+    if "model_id" not in metadata or "prompt_id" not in metadata:
+        raise ValueError("metadata must contain 'model_id' and 'prompt_id'")
 
-# Read examples
-print("All prompts:", read_prompts().data)
-print("Single prompt:", read_prompts(prompt_data.data[0]["id"]).data)
+    if not isinstance(image_url, str):
+        raise ValueError("image_url must be a string")
 
-print("All models:", read_models().data)
-print("Single model:", read_models(model_data.data[0]["id"]).data)
+    response = requests.get(image_url)
+    image = Image.open(BytesIO(response.content))
 
-print("All images:", read_images().data)
-print("Single image:", read_images(image_data.data[0]["id"]).data)
+    image_gen = ImageGen(
+        image=image,
+        model_id=metadata.get("model_id"),
+        prompt_id=metadata.get("prompt_id"),
+    )
+    filename = image_gen.filename()
+
+    webp_image_path = f"/tmp/{filename}.webp"
+    image.save(webp_image_path, "WEBP")
+
+    with open(webp_image_path, "rb") as f:
+        r = supabase.storage.from_("images_bucket").upload(
+            file=f,
+            path=f"{filename}.webp",
+            file_options={"content-type": "image/webp"},
+        )
+
+        return r
