@@ -3,11 +3,11 @@ from adapter import *
 
 prompt = "An underwater scene of a vibrant coral reef teeming with life. Schools of tropical fish dart between the coral, while a curious octopus changes colors to blend with its surroundings. Shafts of sunlight penetrate the crystal-clear water."
 
-sdxl = SDXLLightning(prompt)
-sd = StableDiffusion(prompt)
-sd3 = StableDiffusion3(prompt)
-fp = FluxPro(prompt)
-fs = FluxSchnell(prompt)
+# sdxl = SDXLLightning(prompt)
+# sd = StableDiffusion(prompt)
+# sd3 = StableDiffusion3(prompt)
+# fp = FluxPro(prompt)
+# fs = FluxSchnell(prompt)
 
 # Generate images
 # sdxl_output = sdxl.generate_image()
@@ -25,7 +25,7 @@ fs = FluxSchnell(prompt)
 
 # fs_output = fs.generate_image()
 
-# metadata = {"model_id": "fluxschnell", "prompt_id": "prompt1"}
-
-# res = db.upload_image_to_bucket(fs_output[0], metadata=metadata)
-# print(res)
+res = db.upload_image_to_bucket(
+    "https://yycelpiurkvyijumsxcw.supabase.co/storage/v1/object/public/images_bucket/PMT:prompt1-MDL:fluxschnell-IMG:4cad3886-cf02-4481-886c-04cd7172c370.webp",
+)
+print(res)

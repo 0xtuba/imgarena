@@ -50,7 +50,7 @@ def read_comparisons(id=None):
 
 
 # Images table operations
-def write_image(prompt_id, model_id, image_url):
+def write_image(prompt_id, model_id, image_url, image_id):
     data = (
         supabase.table("images")
         .insert(
@@ -59,6 +59,7 @@ def write_image(prompt_id, model_id, image_url):
                 "model_id": model_id,
                 "image_url": image_url,
                 "created_at": get_utc_timestamp(),
+                "id": image_id,
             }
         )
         .execute()
@@ -111,11 +112,12 @@ def read_rankings(id=None):
 
 
 # Models table operations
-def write_model(name, description):
+def write_model(id, name, description):
     data = (
         supabase.table("models")
         .insert(
             {
+                "id": id,
                 "name": name,
                 "description": description,
                 "created_at": get_utc_timestamp(),
@@ -132,22 +134,15 @@ def read_models(id=None):
     return supabase.table("models").select("*").execute()
 
 
-def upload_image_to_bucket(image_url: str, metadata: dict):
-    if "model_id" not in metadata or "prompt_id" not in metadata:
-        raise ValueError("metadata must contain 'model_id' and 'prompt_id'")
-
+def upload_image_to_bucket(image_url: str):
     if not isinstance(image_url, str):
         raise ValueError("image_url must be a string")
 
     response = requests.get(image_url)
     image = Image.open(BytesIO(response.content))
 
-    image_gen = ImageGen(
-        image=image,
-        model_id=metadata.get("model_id"),
-        prompt_id=metadata.get("prompt_id"),
-    )
-    filename = image_gen.filename()
+    image_gen = ImageGen(image=image)
+    filename = image_gen.img_id
 
     webp_image_path = f"/tmp/{filename}.webp"
     image.save(webp_image_path, "WEBP")
@@ -159,4 +154,4 @@ def upload_image_to_bucket(image_url: str, metadata: dict):
             file_options={"content-type": "image/webp"},
         )
 
-        return r
+        return filename, r.json()
