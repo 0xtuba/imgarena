@@ -29,9 +29,14 @@ class TTIModel:
             input_params.update(additional_params)
 
         output = replicate.run(
-            self.model,
+            self.id,
             input=input_params,
         )
+
+        # If output is a list with one item, return that item
+        if isinstance(output, list) and len(output) == 1:
+            return output[0]
+
         return output
 
 
