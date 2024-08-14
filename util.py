@@ -51,7 +51,7 @@ def save_prompts():
 
 
 def generate_images():
-    prompts = db.read_prompts().data
+    prompts = db.read_prompts()
 
     for prompt in prompts:
         text = prompt["text"]
