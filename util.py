@@ -1,3 +1,4 @@
+import logging
 import os
 
 from dotenv import load_dotenv
@@ -50,21 +51,35 @@ def save_prompts():
         db.write_prompt(prompt)
 
 
+logging.basicConfig(
+    filename="image_generation.log",
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(message)s",
+)
+
+
 def generate_images():
     prompts = db.read_prompts()
 
-    for prompt in prompts:
-        text = prompt["text"]
+    for i, prompt in enumerate(prompts):
+        logging.info(f"Processing prompt {i + 1}/{len(prompts)}: {prompt.text[:50]}...")
+
+        text = prompt.text
         models = get_all_models(text)
-        for model in models:
+        for j, model in enumerate(models):
+            logging.info(
+                f"  Generating image {j + 1}/{len(models)} using {model.__class__.__name__}"
+            )
+
             image_url = model.generate_image()
             filename, res = db.upload_image_to_bucket(image_url=image_url)
-            print("Uploaded file to bucket:", res)
+            logging.info(f"  Uploaded file to bucket: {res}")
+
             img_bucket_url = f"https://yycelpiurkvyijumsxcw.supabase.co/storage/v1/object/public/images_bucket/{filename}.webp"
             r = db.write_image(
-                prompt_id=prompt["id"],
+                prompt_id=str(prompt.id),
                 model_id=model.id,
                 image_url=img_bucket_url,
                 image_id=filename,
             )
-            print("Write image to db", r.data)
+            logging.info(f"  Write image to db: {r}")

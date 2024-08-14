@@ -114,14 +114,21 @@ def write_image(prompt_id, model_id, image_url, image_id):
     return data
 
 
-def read_images(id: Optional[UUID4] = None) -> Union[Image, List[Image], None]:
+def read_images(
+    id: Optional[UUID4] = None, prompt_id: Optional[UUID4] = None
+) -> Union[Image, List[Image], None]:
+    query = supabase.table("images").select("*")
+
     if id:
-        result = supabase.table("images").select("*").eq("id", id).execute()
+        result = query.eq("id", id).execute()
         if result.data:
             return Image(**result.data[0])
         return None
+    elif prompt_id:
+        result = query.eq("prompt_id", prompt_id).execute()
+        return [Image(**item) for item in result.data]
     else:
-        result = supabase.table("images").select("*").execute()
+        result = query.execute()
         return [Image(**item) for item in result.data]
 
 

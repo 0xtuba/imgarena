@@ -1,7 +1,7 @@
-import db
-from adapter import *
+import os
 
-prompt = "An underwater scene of a vibrant coral reef teeming with life. Schools of tropical fish dart between the coral, while a curious octopus changes colors to blend with its surroundings. Shafts of sunlight penetrate the crystal-clear water."
+from dotenv import load_dotenv
+from supabase import Client, create_client
 
 # sdxl = SDXLLightning(prompt)
 # sd = StableDiffusion(prompt)
@@ -25,7 +25,16 @@ prompt = "An underwater scene of a vibrant coral reef teeming with life. Schools
 
 # fs_output = fs.generate_image()
 
-res = db.upload_image_to_bucket(
-    "https://yycelpiurkvyijumsxcw.supabase.co/storage/v1/object/public/images_bucket/PMT:prompt1-MDL:fluxschnell-IMG:4cad3886-cf02-4481-886c-04cd7172c370.webp",
-)
+
+# Load environment variables
+load_dotenv()
+
+# Initialize Supabase client
+url: str = os.environ.get("SUPABASE_URL")
+# key: str = os.environ.get("SUPABASE_KEY")
+key: str = os.environ.get("SUPABASE_ADMIN_KEY")
+supabase: Client = create_client(url, key)
+
+res = supabase.storage.from_("images_bucket").list()
+
 print(res)

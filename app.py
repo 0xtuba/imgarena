@@ -15,7 +15,10 @@ async def root():
 @app.get("/prompt")
 async def choose_prompt():
     prompts = db.read_prompts()
-    return random.choice(prompts)
+    prompt = random.choice(prompts)
+
+    images = db.read_images(prompt_id=prompt.id)
+    return {"prompt": prompt.text, "images": [image.image_url for image in images]}
 
 
 if __name__ == "__main__":
