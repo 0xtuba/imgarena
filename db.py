@@ -65,6 +65,23 @@ def get_utc_timestamp():
 
 
 def write_comparison(prompt_id, image1_id, image2_id, image3_id, image4_id, winner_id):
+    required_fields = {
+        "prompt_id": prompt_id,
+        "image1_id": image1_id,
+        "image2_id": image2_id,
+        "image3_id": image3_id,
+        "image4_id": image4_id,
+        "winner_id": winner_id,
+    }
+
+    missing_fields = [
+        field for field, value in required_fields.items() if value is None
+    ]
+
+    if missing_fields:
+        raise ValueError(f"Missing required fields: {', '.join(missing_fields)}")
+
+    print("i got here")
     data = (
         supabase.table("comparisons")
         .insert(
