@@ -1,7 +1,6 @@
 import concurrent.futures
 import logging
 import os
-from typing import List
 
 from dotenv import load_dotenv
 from openai import OpenAI
