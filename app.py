@@ -33,7 +33,7 @@ async def choose_prompt():
 
     # Select 4 random images or all if there are fewer than 4
     selected_images = random.sample(images, min(4, len(images)))
-
+    print(selected_images)
     return {
         "prompt_id": str(prompt.id),
         "prompt": prompt.text,
@@ -45,6 +45,12 @@ async def choose_prompt():
             for image in selected_images
         ],
     }
+
+
+@app.get("/leaderboard")
+async def leaderboard():
+    leaderboard = db.get_all_rankings_with_names()
+    return leaderboard
 
 
 class FavoriteSelection(BaseModel):

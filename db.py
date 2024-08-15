@@ -326,7 +326,38 @@ def get_model_ratings_from_image_ids(
         raise
 
 
-# r = read_images()
-# test = r[:4]
-# ids = [item.id for item in test]
-# print(get_model_ratings_from_image_ids(ids))
+def get_all_rankings_with_names() -> List[Tuple[str, str, float]]:
+    """
+    Retrieve rankings for all models, joined with model names,
+    sorted by elo_score in descending order.
+
+    Returns:
+    List[Tuple[str, str, float]]: A list of tuples containing (model_id, model_name, elo_score),
+                                  sorted by elo_score in descending order.
+    """
+    try:
+        # Fetch all rankings joined with model names
+        response = (
+            supabase.table("rankings")
+            .select("model_id, elo_score, models(name)")
+            .order("elo_score", desc=True)
+            .execute()
+        )
+
+        if hasattr(response, "error") and response.error is not None:
+            raise Exception(f"Supabase query error: {response.error}")
+
+        rankings = [
+            {
+                "model_id": item["model_id"],
+                "model_name": item["models"]["name"],
+                "elo": item["elo_score"],
+            }
+            for item in response.data
+        ]
+
+        return rankings
+
+    except Exception as e:
+        print(f"An error occurred while fetching rankings: {e}")
+        raise

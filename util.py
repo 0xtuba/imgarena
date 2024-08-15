@@ -157,3 +157,18 @@ def initialize_ratings():
     models = db.read_models()
     for model in models:
         db.write_ranking(model_id=model.id, elo_score=1000)
+
+
+def fix():
+    import re
+
+    pattern = r"^\d+\.\s"
+    prompts = db.read_prompts()
+    counter = 0
+    problems = []
+    for prompt in prompts:
+        if re.match(pattern, prompt.text):
+            counter += 1
+            problems.append(prompt)
+
+    print(counter)
