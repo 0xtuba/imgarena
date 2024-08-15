@@ -1,7 +1,7 @@
 import os
 from datetime import UTC, datetime
 from io import BytesIO
-from typing import List, Optional, Union
+from typing import List, Optional, Tuple, Union
 
 import requests
 from dotenv import load_dotenv
@@ -81,7 +81,6 @@ def write_comparison(prompt_id, image1_id, image2_id, image3_id, image4_id, winn
     if missing_fields:
         raise ValueError(f"Missing required fields: {', '.join(missing_fields)}")
 
-    print("i got here")
     data = (
         supabase.table("comparisons")
         .insert(
@@ -186,6 +185,26 @@ def write_ranking(model_id, elo_score):
     return data
 
 
+def bulk_write_rankings(rankings: List[Tuple[str, float]]):
+    current_time = get_utc_timestamp()
+    data_to_update = [
+        {"model_id": model_id, "elo_score": elo_score, "created_at": current_time}
+        for model_id, elo_score in rankings
+    ]
+
+    try:
+        response = (
+            supabase.table("rankings")
+            .upsert(data_to_update, on_conflict="model_id")
+            .execute()
+        )
+
+        return response
+    except Exception as e:
+        print(f"An error occurred during bulk insert: {e}")
+        raise
+
+
 def read_rankings(id: Optional[UUID4] = None) -> Union[Ranking, List[Ranking], None]:
     if id:
         result = supabase.table("rankings").select("*").eq("id", id).execute()
@@ -246,3 +265,60 @@ def upload_image_to_bucket(image_url: str):
         )
 
         return filename, r.json()
+
+
+def get_model_ratings_from_image_ids(
+    image_ids: List[str],
+) -> List[Tuple[str, str, float]]:
+    if len(image_ids) != 4:
+        raise ValueError("Exactly 4 image IDs must be provided")
+
+    try:
+        images_response = (
+            supabase.table("images")
+            .select("id, model_id")
+            .in_("id", image_ids)
+            .execute()
+        )
+
+        if hasattr(images_response, "error") and images_response.error is not None:
+            raise Exception(f"Supabase query error: {images_response.error}")
+
+        images_data = images_response.data
+
+        if len(images_data) != 4:
+            raise ValueError(f"Expected 4 results, but got {len(images_data)}")
+
+        # Extract model_ids
+        model_ids = [img["model_id"] for img in images_data]
+
+        # Query rankings table
+        rankings_response = (
+            supabase.table("rankings")
+            .select("model_id, elo_score")
+            .in_("model_id", model_ids)
+            .execute()
+        )
+
+        if hasattr(rankings_response, "error") and rankings_response.error is not None:
+            raise Exception(f"Supabase query error: {rankings_response.error}")
+
+        rankings_data = {r["model_id"]: r["elo_score"] for r in rankings_response.data}
+
+        # Combine the results
+        result = []
+        for img in images_data:
+            model_id = img["model_id"]
+            elo_score = rankings_data.get(model_id, None)
+            result.append((model_id, elo_score))
+
+        return result
+    except Exception as e:
+        print(f"An error occurred: {e}")
+        raise
+
+
+# r = read_images()
+# test = r[:4]
+# ids = [item.id for item in test]
+# print(get_model_ratings_from_image_ids(ids))

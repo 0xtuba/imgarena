@@ -51,14 +51,12 @@ def save_prompts():
         db.write_prompt(prompt)
 
 
-logging.basicConfig(
-    filename="image_generation.log",
-    level=logging.INFO,
-    format="%(asctime)s - %(levelname)s - %(message)s",
-)
-
-
 def generate_images():
+    logging.basicConfig(
+        filename="image_generation.log",
+        level=logging.INFO,
+        format="%(asctime)s - %(levelname)s - %(message)s",
+    )
     prompts = db.read_prompts()
 
     for i, prompt in enumerate(prompts):
@@ -83,3 +81,41 @@ def generate_images():
                 image_id=filename,
             )
             logging.info(f"  Write image to db: {r}")
+
+
+def update_elo(winner_rating, loser_rating, k_factor=32):
+    expected_winner = 1 / (1 + 10 ** ((loser_rating - winner_rating) / 400))
+    winner_new_rating = winner_rating + k_factor * (1 - expected_winner)
+    loser_new_rating = loser_rating + k_factor * (0 - (1 - expected_winner))
+    return winner_new_rating, loser_new_rating
+
+
+def update_ratings(selected_index, model_ratings, k_factor=32):
+    """
+    Update ratings based on the selected winner.
+
+    Args:
+    selected_index (int): Index of the winning model in the model_ratings list.
+    model_ratings (List[Tuple[str, float]]): List of tuples (model_id, rating).
+    k_factor (int): The K-factor for Elo rating updates.
+
+    Returns:
+    List[Tuple[str, float]]: Updated list of tuples (model_id, new_rating).
+    """
+    winner_model, winner_rating = model_ratings[selected_index]
+    updated_ratings = []
+
+    for i, (model, rating) in enumerate(model_ratings):
+        if i != selected_index:
+            winner_rating, loser_rating = update_elo(winner_rating, rating, k_factor)
+            updated_ratings.append((model, loser_rating))
+        else:
+            updated_ratings.append((model, winner_rating))
+
+    return updated_ratings
+
+
+def initialize_ratings():
+    models = db.read_models()
+    for model in models:
+        db.write_ranking(model_id=model.id, elo_score=1000)

@@ -1,11 +1,22 @@
 import random
 
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import UUID4, BaseModel
 
 import db
+import util
 
 app = FastAPI()
+
+# Add CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000"],  # Allows CORS for localhost:3000
+    allow_credentials=True,
+    allow_methods=["*"],  # Allows all methods
+    allow_headers=["*"],  # Allows all headers
+)
 
 
 @app.get("/")
@@ -19,6 +30,10 @@ async def choose_prompt():
     prompt = random.choice(prompts)
 
     images = db.read_images(prompt_id=prompt.id)
+
+    # Select 4 random images or all if there are fewer than 4
+    selected_images = random.sample(images, min(4, len(images)))
+
     return {
         "prompt_id": str(prompt.id),
         "prompt": prompt.text,
@@ -27,7 +42,7 @@ async def choose_prompt():
                 "image_id": str(image.id),
                 "image_url": image.image_url,
             }
-            for image in images
+            for image in selected_images
         ],
     }
 
@@ -52,6 +67,23 @@ async def select_favorite(selection: FavoriteSelection):
             str(selection.image4_id),
             str(selection.winner_id),
         )
+
+        choices = [
+            selection.image1_id,
+            selection.image2_id,
+            selection.image3_id,
+            selection.image4_id,
+        ]
+        winner_index = choices.index(selection.winner_id)
+        print(winner_index)
+
+        ratings = db.get_model_ratings_from_image_ids(choices)
+        print(ratings)
+
+        updated_ratings = util.update_ratings(winner_index, ratings)
+        print(updated_ratings)
+        db.bulk_write_rankings(updated_ratings)
+
         return {"message": "Comparison recorded successfully"}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
