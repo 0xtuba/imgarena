@@ -169,6 +169,14 @@ def read_prompts(id: Optional[UUID4] = None) -> Union[Prompt, List[Prompt], None
         return [Prompt(**item) for item in result.data]
 
 
+def fetch_unprocessed_prompts() -> List[Prompt]:
+    response = supabase.rpc("fetch_unprocessed_prompts", {}).execute()
+    if hasattr(response, "error") and response.error is not None:
+        raise Exception(f"Error fetching unprocessed prompts: {response.error}")
+
+    return [Prompt(**item) for item in response.data]
+
+
 # Rankings table operations
 def write_ranking(model_id, elo_score):
     data = (
@@ -220,7 +228,7 @@ def read_rankings(id: Optional[UUID4] = None) -> Union[Ranking, List[Ranking], N
 def write_model(id, name, description):
     data = (
         supabase.table("models")
-        .insert(
+        .upsert(
             {
                 "id": id,
                 "name": name,

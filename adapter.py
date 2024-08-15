@@ -3,11 +3,12 @@ from typing import Any, Dict, Optional
 
 import replicate
 from dotenv import load_dotenv
+from openai import OpenAI
 
 load_dotenv()
 
-HEIGHT = 640
-WIDTH = 640
+HEIGHT = 1024
+WIDTH = 1024
 
 
 class ImageGen:
@@ -120,3 +121,58 @@ class FluxSchnell(TTIModel):
     def generate_image(self) -> Any:
         additional_params = {}
         return super().generate_image(additional_params)
+
+
+class FluxDev(TTIModel):
+    def __init__(self, prompt: str):
+        super().__init__(
+            prompt=prompt,
+            name="Flux Dev",
+            description="Flux Dev",
+            id="black-forest-labs/flux-dev",
+        )
+
+    def generate_image(self) -> Any:
+        additional_params = {}
+        return super().generate_image(additional_params)
+
+
+class Kandinsky22(TTIModel):
+    def __init__(self, prompt: str):
+        super().__init__(
+            prompt=prompt,
+            name="Kandinsky-2.2",
+            description="Kandinsky-2.2",
+            id="ai-forever/kandinsky-2.2:ad9d7879fbffa2874e1d909d1d37d9bc682889cc65b31f7bb00d2362619f194a",
+        )
+
+    def generate_image(self) -> Any:
+        additional_params = {
+            "height": HEIGHT,
+            "width": WIDTH,
+        }
+        return super().generate_image(additional_params)
+
+
+class DALLE3(TTIModel):
+    from openai import OpenAI
+
+    def __init__(self, prompt: str):
+        super().__init__(
+            prompt=prompt,
+            name="DALL-E 3",
+            description="DALL-E 3",
+            id="dall-e-3",
+        )
+
+    def generate_image(self) -> Any:
+        client = OpenAI()
+        response = client.images.generate(
+            model=self.id,
+            prompt=self.prompt,
+            size=f"{WIDTH}x{HEIGHT}",
+            quality="standard",
+            n=1,
+        )
+
+        return response.data[0].url
