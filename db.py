@@ -1,7 +1,8 @@
 import os
+from collections import Counter
 from datetime import UTC, datetime
 from io import BytesIO
-from typing import List, Optional, Tuple, Union
+from typing import Dict, List, Optional, Tuple, Union
 
 import requests
 from dotenv import load_dotenv
@@ -371,4 +372,18 @@ def get_all_rankings_with_names() -> List[Tuple[str, str, float]]:
 
     except Exception as e:
         print(f"An error occurred while fetching rankings: {e}")
+        raise
+
+
+def get_leaderboard():
+    try:
+        response = supabase.rpc("get_rankings_with_win_counts", {}).execute()
+
+        if hasattr(response, "error") and response.error is not None:
+            raise Exception(f"Supabase query error: {response.error}")
+
+        return response.data
+
+    except Exception as e:
+        print(f"An error occurred while fetching and processing win counts: {e}")
         raise

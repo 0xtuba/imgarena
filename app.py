@@ -51,7 +51,7 @@ async def choose_prompt():
 
 @app.get("/leaderboard")
 async def leaderboard():
-    leaderboard = db.get_all_rankings_with_names()
+    leaderboard = db.get_leaderboard()
     return leaderboard
 
 
