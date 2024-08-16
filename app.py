@@ -36,7 +36,6 @@ async def choose_prompt():
 
     # Select 4 random images or all if there are fewer than 4
     selected_images = random.sample(images, min(4, len(images)))
-    print(selected_images)
     return {
         "prompt_id": str(prompt.id),
         "prompt": prompt.text,
@@ -84,16 +83,15 @@ async def select_favorite(selection: FavoriteSelection):
             selection.image4_id,
         ]
         winner_index = choices.index(selection.winner_id)
-        print(winner_index)
-
         ratings = db.get_model_ratings_from_image_ids(choices)
-        print(ratings)
-
         updated_ratings = util.update_ratings(winner_index, ratings)
-        print(updated_ratings)
         db.bulk_write_rankings(updated_ratings)
 
-        return {"message": "Comparison recorded successfully"}
+        winner_model = ratings[winner_index][1]
+
+        return {
+            "winner_model": winner_model,
+        }
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 

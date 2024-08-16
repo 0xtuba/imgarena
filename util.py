@@ -143,10 +143,10 @@ def update_ratings(selected_index, model_ratings, k_factor=32):
     Returns:
     List[Tuple[str, float]]: Updated list of tuples (model_id, new_rating).
     """
-    winner_model, winner_rating = model_ratings[selected_index]
+    winner_model, winner_name, winner_rating = model_ratings[selected_index]
     updated_ratings = []
 
-    for i, (model, rating) in enumerate(model_ratings):
+    for i, (model, _, rating) in enumerate(model_ratings):
         if i != selected_index:
             new_winner_rating, loser_rating = update_elo(
                 winner_rating, rating, k_factor

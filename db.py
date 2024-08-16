@@ -181,7 +181,7 @@ def fetch_unprocessed_prompts() -> List[Prompt]:
 def write_ranking(model_id, elo_score):
     data = (
         supabase.table("rankings")
-        .insert(
+        .upsert(
             {
                 "model_id": model_id,
                 "elo_score": elo_score,
@@ -303,7 +303,7 @@ def get_model_ratings_from_image_ids(
         # Query rankings table
         rankings_response = (
             supabase.table("rankings")
-            .select("model_id, elo_score")
+            .select("models(name), model_id, elo_score")
             .in_("model_id", model_ids)
             .execute()
         )
@@ -311,14 +311,25 @@ def get_model_ratings_from_image_ids(
         if hasattr(rankings_response, "error") and rankings_response.error is not None:
             raise Exception(f"Supabase query error: {rankings_response.error}")
 
-        rankings_data = {r["model_id"]: r["elo_score"] for r in rankings_response.data}
-
+        rankings_data = {
+            r["model_id"]: {"elo_score": r["elo_score"], "name": r["models"]["name"]}
+            for r in rankings_response.data
+        }
         # Combine the results
         result = []
         for img in images_data:
             model_id = img["model_id"]
-            elo_score = rankings_data.get(model_id, None)
-            result.append((model_id, elo_score))
+            res = rankings_data.get(model_id, None)
+            elo_score = res["elo_score"]
+            name = res["name"]
+
+            result.append(
+                (
+                    model_id,
+                    name,
+                    elo_score,
+                )
+            )
 
         return result
     except Exception as e:
