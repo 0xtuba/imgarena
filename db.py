@@ -1,8 +1,7 @@
 import os
-from collections import Counter
 from datetime import UTC, datetime
 from io import BytesIO
-from typing import Dict, List, Optional, Tuple, Union
+from typing import List, Optional, Tuple, Union
 
 import requests
 from dotenv import load_dotenv

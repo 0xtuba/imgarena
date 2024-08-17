@@ -15,6 +15,8 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:3000",
         "https://imgarena-fe.vercel.app",
+        "https://www.imgenarena.ai",
+        "https://imgenarena.ai",
     ],  # Allows CORS for localhost:3000
     allow_credentials=True,
     allow_methods=["*"],  # Allows all methods
