@@ -1,6 +1,10 @@
 import concurrent.futures
+import csv
 import logging
 import os
+from collections import defaultdict
+from datetime import datetime
+from uuid import UUID
 
 from dotenv import load_dotenv
 from openai import OpenAI
@@ -8,6 +12,7 @@ from pydantic import BaseModel
 
 import adapter
 import db
+from db import Prompt
 
 load_dotenv()
 
@@ -21,8 +26,9 @@ def get_all_models(prompt: str):
     fd = adapter.FluxDev(prompt)
     k22 = adapter.Kandinsky22(prompt)
     d3 = adapter.DALLE3(prompt)
+    mj = adapter.Midjourney(prompt)
 
-    return [sdxl, sd1, sd3, fp, fs, fd, k22, d3]
+    return [sdxl, sd1, sd3, fp, fs, fd, k22, d3, mj]
 
 
 def save_models():
@@ -181,3 +187,223 @@ def fix():
             problems.append(prompt)
 
     print(counter)
+
+
+def start_mj_jobs():
+    model = adapter.Midjourney("")
+    logging.basicConfig(
+        filename="image_generation.log",
+        level=logging.INFO,
+        format="%(asctime)s - %(levelname)s - %(message)s",
+    )
+
+    # Read the CSV file
+    unprocessed_prompts = []
+    with open("output.csv", "r", newline="", encoding="utf-8") as csvfile:
+        reader = csv.DictReader(csvfile)
+        for row in reader:
+            if not any(row[f"img{i}"] for i in range(1, 5)):
+                unprocessed_prompts.append({"id": row["ID"], "text": row["Text"]})
+
+    total_prompts = len(unprocessed_prompts)
+    responses = []
+
+    for i, prompt in enumerate(unprocessed_prompts):
+        logging.info(
+            f"Processing prompt {i + 1}/{total_prompts}: {prompt['text'][:50]}..."
+        )
+        model.prompt = prompt["text"]
+        try:
+            r = process_model(prompt, model, i, 0, total_prompts, 1)
+            if r.status_code == 200:
+                responses.append(r["data"])
+            else:
+                logging.error(f"Error processing prompt {i + 1}: {str(r)}")
+        except Exception as e:
+            logging.error(f"Error processing prompt {i + 1}: {str(e)}")
+
+
+def write_prompts_to_csv():
+    import csv
+
+    prompts = db.read_prompts()
+
+    with open("prompts.csv", "w", newline="", encoding="utf-8") as csvfile:
+        writer = csv.writer(csvfile)
+        writer.writerow(["ID", "Text"])  # Header row
+
+        for prompt in prompts:
+            writer.writerow([prompt.id, prompt.text])
+
+    print(f"Successfully wrote {len(prompts)} prompts to prompts.csv")
+
+
+def check_missing(model_id, filename):
+    with open(filename, "r", newline="", encoding="utf-8") as infile:
+        reader = csv.DictReader(infile)
+        rows = list(reader)
+
+    total_prompts = len(rows)
+    column_name = f"{model_id}"
+    missing_prompts = [
+        Prompt(
+            id=UUID(row["prompt_id"]),
+            text=row["prompt_text"],
+            created_at=datetime.now(),  # Note: Using current time as creation time
+        )
+        for row in rows
+        if not row.get(column_name)
+    ]
+
+    print(f"Total prompts: {total_prompts}")
+    print(f"Prompts with missing {model_id} images: {len(missing_prompts)}")
+
+    return missing_prompts
+
+
+def fill_missing_columns(missing_prompts, model_class):
+    logging.basicConfig(
+        filename="fill_missing_columns.log",
+        level=logging.INFO,
+        format="%(asctime)s - %(levelname)s - %(message)s",
+    )
+
+    total_prompts = len(missing_prompts)
+    logging.info(f"Total prompts to process: {total_prompts}")
+    logging.info(f"Model: {model_class.__name__}")
+
+    # Process each prompt
+    for i, prompt in enumerate(missing_prompts):
+        model = model_class(prompt.text)
+        process_model(
+            prompt=prompt,
+            model=model,
+            prompt_index=i,
+            model_index=0,
+            total_prompts=total_prompts,
+            total_models=1,
+        )
+
+    logging.info("Image generation complete.")
+
+
+def generate_image_comparison_csv(output_csv):
+    from collections import defaultdict
+
+    # Fetch all prompts
+    prompts = {row.id: row.text for row in db.read_prompts()}
+
+    # Fetch all models
+    models = {row.id: row.id for row in db.read_models()}
+
+    # Fetch all images
+    images_response = db.read_images()
+    images_by_prompt = defaultdict(dict)
+    for row in images_response:
+        images_by_prompt[row.prompt_id][row.model_id] = row.image_url
+
+    # Prepare CSV headers
+    headers = ["prompt_id", "prompt_text"] + [f"{id}" for id in models.values()]
+
+    # Write to CSV
+    with open(output_csv, "w", newline="", encoding="utf-8") as csvfile:
+        writer = csv.writer(csvfile)
+        writer.writerow(headers)
+
+        for prompt_id, prompt_text in prompts.items():
+            row = [prompt_id, prompt_text]
+            for model_id in models:
+                row.append(images_by_prompt[prompt_id].get(model_id, ""))
+            writer.writerow(row)
+
+    print(f"CSV file '{output_csv}' has been generated successfully.")
+
+
+def delete_duplicate_images():
+    # Use db.read_images() to fetch all images
+    images_response = db.read_images()
+
+    # Group images by prompt_id and model_id
+    image_groups = defaultdict(list)
+    for row in images_response:
+        image_groups[(row.prompt_id, row.model_id)].append(row)
+
+    total_duplicates = 0
+    duplicates_by_model = defaultdict(int)
+
+    for (prompt_id, model_id), images in image_groups.items():
+        if len(images) > 1:
+            # Sort images by created_at timestamp in descending order
+            sorted_images = sorted(images, key=lambda x: x.created_at, reverse=True)
+
+            # Keep the first (latest) image, delete the rest
+            for image_to_delete in sorted_images[1:]:
+                try:
+                    # First, delete any comparisons referencing this image
+                    db.delete_comparisons_by_image_id(image_to_delete.id)
+
+                    # Then delete the image
+                    db.delete_image(image_to_delete.id)
+
+                    total_duplicates += 1
+                    duplicates_by_model[model_id] += 1
+                    print(
+                        f"Deleted duplicate: Prompt ID: {prompt_id}, Model ID: {model_id}, Image ID: {image_to_delete.id}"
+                    )
+                except Exception as e:
+                    print(f"Error deleting image {image_to_delete.id}: {str(e)}")
+
+    print(f"\nTotal number of deleted duplicate images: {total_duplicates}")
+    print("\nDeleted duplicates by model:")
+    for model_id, count in duplicates_by_model.items():
+        print(f"Model ID: {model_id}, Deleted duplicate count: {count}")
+
+    # Calculate total number of images after deletion
+    total_images = sum(len(images) for images in image_groups.values())
+
+    print(f"\nTotal number of images after deletion: {total_images}")
+    print(
+        f"Percentage of duplicates deleted: {(total_duplicates / (total_images + total_duplicates)) * 100:.2f}%"
+    )
+
+
+def count_duplicate_images():
+    # Fetch all images
+    images_response = db.read_images()
+
+    # Count images per prompt_id and model_id combination
+    image_counts = defaultdict(lambda: defaultdict(int))
+    total_images = 0
+
+    for row in images_response:
+        prompt_id = row.prompt_id
+        model_id = row.model_id
+        image_counts[prompt_id][model_id] += 1
+        total_images += 1
+
+    # Count and print duplicates
+    total_duplicates = 0
+    duplicates_by_model = defaultdict(int)
+
+    for prompt_id, models in image_counts.items():
+        for model_id, count in models.items():
+            if count > 1:
+                duplicates = count - 1
+                total_duplicates += duplicates
+                duplicates_by_model[model_id] += duplicates
+                print(
+                    f"Prompt ID: {prompt_id}, Model ID: {model_id}, Duplicate count: {duplicates}"
+                )
+
+    print(f"\nTotal number of duplicate images: {total_duplicates}")
+    print("\nDuplicates by model:")
+    for model_id, count in duplicates_by_model.items():
+        print(f"Model ID: {model_id}, Duplicate count: {count}")
+
+    print(f"\nTotal number of images: {total_images}")
+    if total_images > 0:
+        print(
+            f"Percentage of duplicates: {(total_duplicates / total_images) * 100:.2f}%"
+        )
+    else:
+        print("No images found.")

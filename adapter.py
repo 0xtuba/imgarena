@@ -1,7 +1,9 @@
+import os
 import uuid
 from typing import Any, Dict, Optional
 
 import replicate
+import requests
 from dotenv import load_dotenv
 from openai import OpenAI
 
@@ -176,3 +178,29 @@ class DALLE3(TTIModel):
         )
 
         return response.data[0].url
+
+
+class Midjourney(TTIModel):
+    from openai import OpenAI
+
+    def __init__(self, prompt: str):
+        super().__init__(
+            prompt=prompt,
+            name="Midjourney",
+            description="Midjourney",
+            id="midjourney",
+        )
+
+    def generate_image(self) -> Any:
+        IMAGINE_API_KEY = os.getenv("IMAGINE_API_KEY")
+        url = "http://cl.imagineapi.dev/items/images/"
+        payload = {
+            "prompt": self.prompt,
+        }
+        headers = {
+            "Authorization": f"Bearer {IMAGINE_API_KEY}",
+            "Content-Type": "application/json",
+        }
+
+        response = requests.request("POST", url, headers=headers, json=payload)
+        return response

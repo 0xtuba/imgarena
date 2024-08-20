@@ -112,6 +112,15 @@ def read_comparisons(
         return [Comparison(**item) for item in result.data]
 
 
+def delete_comparisons_by_image_id(image_id):
+    supabase.table("comparisons").delete().or_(
+        f"image1_id.eq.{image_id},"
+        f"image2_id.eq.{image_id},"
+        f"image3_id.eq.{image_id},"
+        f"image4_id.eq.{image_id}"
+    ).execute()
+
+
 # Images table operations
 def write_image(prompt_id, model_id, image_url, image_id):
     data = (
@@ -130,6 +139,18 @@ def write_image(prompt_id, model_id, image_url, image_id):
     return data
 
 
+def delete_image(image_id: UUID4):
+    try:
+        response = supabase.table("images").delete().eq("id", str(image_id)).execute()
+        if response.data:
+            return response.data
+        else:
+            raise Exception(f"No image found with id: {image_id}")
+    except Exception as e:
+        print(f"An error occurred while deleting the image: {e}")
+        raise
+
+
 def read_images(
     id: Optional[UUID4] = None, prompt_id: Optional[UUID4] = None
 ) -> Union[Image, List[Image], None]:
@@ -144,8 +165,21 @@ def read_images(
         result = query.eq("prompt_id", prompt_id).execute()
         return [Image(**item) for item in result.data]
     else:
-        result = query.execute()
-        return [Image(**item) for item in result.data]
+        all_images = []
+        page = 1
+        page_size = 1000  # Maximum allowed by Supabase
+
+        while True:
+            result = query.range((page - 1) * page_size, page * page_size - 1).execute()
+            images = [Image(**item) for item in result.data]
+            all_images.extend(images)
+
+            if len(images) < page_size:
+                break
+
+            page += 1
+
+        return all_images
 
 
 # Prompts table operations
@@ -156,6 +190,13 @@ def write_prompt(text):
         .execute()
     )
     return data
+
+
+def get_prompt_by_text(text: str) -> Optional[Prompt]:
+    result = supabase.table("prompts").select("*").eq("text", text).limit(1).execute()
+    if result.data:
+        return Prompt(**result.data[0])
+    return None
 
 
 def read_prompts(id: Optional[UUID4] = None) -> Union[Prompt, List[Prompt], None]:
