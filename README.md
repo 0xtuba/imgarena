@@ -14,11 +14,17 @@ Imgen Arena is an arena-style system for evaluating image generation models. Sin
 - [DALL-E 3](https://openai.com/index/dall-e-3/)
 - [Midjourney](https://www.midjourney.com/)
 
+## Future Extensions
+
+- Adding new models, particularly [Google Imagen3](https://deepmind.google/technologies/imagen-3/) (waiting for API access) and Llama3 
+- Create new categories of prompts, such as "realistic", "portrait", "abstract", specific styles, images with text, etc. and have separate leaderboards for each category.
+
+
 ## Contributing
 
 Please feel free to open an issue if you want to add support for a new model.
 
-If your model is supported on Replicate or another inference provider, please open an issue to add it to the list of supported models. I am currently happy to pay for the image generation costs.
+If your model is supported on Replicate, please open an issue to add it to the list of supported models. You can make a pull request to add it to the list of supported models in `adapter.py`, for example [this one](https://github.com/0xtuba/imgarena/blob/master/adapter.py#L46-L65). If the model is not supported on Replicate but has an API, you can make a pull request to add it to the adapters like [DALLE3](https://github.com/0xtuba/imgarena/blob/master/adapter.py#L159-L180). 
 
 If the model does not have an API, you will need to generate the images locally based on the prompts in `master.csv`. Once you do that, you can submit an issue with your generated images and I will add them to the database.
 
