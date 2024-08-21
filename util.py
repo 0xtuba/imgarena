@@ -2,6 +2,7 @@ import concurrent.futures
 import csv
 import logging
 import os
+import re
 from collections import defaultdict
 from datetime import datetime
 from uuid import UUID
@@ -15,6 +16,15 @@ import db
 from db import Prompt
 
 load_dotenv()
+
+
+def transform_img_url(img_url):
+    pattern = r"/([^/]+)$"
+    match = re.search(pattern, img_url)
+    height, width = 400, 400
+    if match:
+        img_id = match.group(1)
+        return f"https://yycelpiurkvyijumsxcw.supabase.co/storage/v1/render/image/public/images_bucket/{img_id}?width={width}&height={height}"
 
 
 def get_all_models(prompt: str):
