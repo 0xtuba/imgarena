@@ -11,5 +11,9 @@
         "src": "/(.*)",
         "dest": "app.py"
       }
-    ]
+    ],
+    "crons": [{
+      "path": "/prompt",
+      "schedule": "0 1 * * *"
+    }]
   }
