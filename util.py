@@ -18,7 +18,7 @@ from db import Prompt
 load_dotenv()
 
 
-def transform_img_url(img_url):
+def transform_img_url(img_url: str) -> str:
     pattern = r"/([^/]+)$"
     match = re.search(pattern, img_url)
     height, width = 400, 400
