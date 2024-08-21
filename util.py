@@ -21,7 +21,7 @@ load_dotenv()
 def transform_img_url(img_url: str) -> str:
     pattern = r"/([^/]+)$"
     match = re.search(pattern, img_url)
-    height, width = 400, 400
+    height, width = 1024, 1024
     if match:
         img_id = match.group(1)
         return f"https://yycelpiurkvyijumsxcw.supabase.co/storage/v1/render/image/public/images_bucket/{img_id}?width={width}&height={height}"
