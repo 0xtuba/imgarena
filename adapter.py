@@ -2,6 +2,7 @@ import os
 import uuid
 from typing import Any, Dict, Optional
 
+import fal_client
 import replicate
 import requests
 from dotenv import load_dotenv
@@ -204,3 +205,26 @@ class Midjourney(TTIModel):
 
         response = requests.request("POST", url, headers=headers, json=payload)
         return response
+
+
+class AuraFlow(TTIModel):
+    def __init__(self, prompt: str):
+        super().__init__(
+            prompt=prompt,
+            name="AuraFlow",
+            description="AuraFlow",
+            id="fal-ai/aura-flow",
+        )
+
+    def generate_image(self) -> Any:
+        handler = fal_client.submit(
+            "fal-ai/aura-flow",
+            arguments={
+                "prompt": self.prompt,
+            },
+        )
+        res = handler.get()
+        if res["images"]:
+            return res["images"][0]["url"]
+        else:
+            return None

@@ -1,8 +1,10 @@
+import argparse
 import concurrent.futures
 import csv
 import logging
 import os
 import re
+import sys
 from collections import defaultdict
 from datetime import datetime
 from uuid import UUID
@@ -16,6 +18,37 @@ import db
 from db import Prompt
 
 load_dotenv()
+
+MODEL_MAP = {
+    "SDXL Lightning 4-step": adapter.SDXLLightning,
+    "Stable Diffusion": adapter.StableDiffusion,
+    "Stable Diffusion 3": adapter.StableDiffusion3,
+    "Flux Pro": adapter.FluxPro,
+    "Flux Schnell": adapter.FluxSchnell,
+    "Flux Dev": adapter.FluxDev,
+    "Kandinsky-2.2": adapter.Kandinsky22,
+    "DALL-E 3": adapter.DALLE3,
+    "Midjourney": adapter.Midjourney,
+    "AuraFlow": adapter.AuraFlow,
+}
+
+
+def test_model(model_name: str, prompt: str) -> adapter.TTIModel:
+    model_class = MODEL_MAP.get(model_name)
+    if model_class is None:
+        raise ValueError(f"Unknown model name: {model_name}")
+    model = model_class(prompt)
+    res = model.generate_image()
+    return res
+
+
+def add_model_db(model_name: str):
+    model_class = MODEL_MAP.get(model_name)
+    if model_class is None:
+        raise ValueError(f"Unknown model name: {model_name}")
+    model = model_class("")
+    res = db.write_model(model.id, model.name, model.description)
+    return res
 
 
 def transform_img_url(img_url: str) -> str:
@@ -37,8 +70,9 @@ def get_all_models(prompt: str):
     k22 = adapter.Kandinsky22(prompt)
     d3 = adapter.DALLE3(prompt)
     mj = adapter.Midjourney(prompt)
+    af = adapter.AuraFlow(prompt)
 
-    return [sdxl, sd1, sd3, fp, fs, fd, k22, d3, mj]
+    return [sdxl, sd1, sd3, fp, fs, fd, k22, d3, mj, af]
 
 
 def save_models():
@@ -104,36 +138,37 @@ def process_model(
         )
 
 
-def generate_images():
+def generate_images(model_name: str):
     logging.basicConfig(
         filename="image_generation_2.log",
         level=logging.INFO,
         format="%(asctime)s - %(levelname)s - %(message)s",
     )
-    # prompts = db.read_prompts()
-    prompts = db.fetch_unprocessed_prompts()
+    prompts = db.read_prompts()
 
-    max_workers = 8
+    max_workers = min(8, len(prompts))  # Adjust based on available prompts
+
+    model_class = MODEL_MAP.get(model_name)
+    if model_class is None:
+        raise ValueError(f"Unknown model name: {model_name}")
+
+    def process_prompt(prompt, index):
+        model = model_class(prompt.text)
+        return process_model(prompt, model, index, 0, len(prompts), 1)
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
-        futures = []
-        for i, prompt in enumerate(prompts):
-            logging.info(
-                f"Processing prompt {i + 1}/{len(prompts)}: {prompt.text[:50]}..."
-            )
+        futures = [
+            executor.submit(process_prompt, prompt, i)
+            for i, prompt in enumerate(prompts)
+        ]
 
-            models = get_all_models(prompt.text)
-            for j, model in enumerate(models):
-                futures.append(
-                    executor.submit(
-                        process_model, prompt, model, i, j, len(prompts), len(models)
-                    )
-                )
+        for future in concurrent.futures.as_completed(futures):
+            try:
+                future.result()
+            except Exception as e:
+                logging.error(f"Error processing prompt: {str(e)}")
 
-        # Wait for all futures to complete
-        concurrent.futures.wait(futures)
-
-    logging.info("Image generation completed.")
+    logging.info(f"Image generation completed for model: {model_name}")
 
 
 def update_elo(winner_rating, loser_rating, k_factor=32, win_loss_multiplier=1.1):
@@ -182,21 +217,6 @@ def initialize_ratings():
     models = db.read_models()
     for model in models:
         db.write_ranking(model_id=model.id, elo_score=1000)
-
-
-def fix():
-    import re
-
-    pattern = r"^\d+\.\s"
-    prompts = db.read_prompts()
-    counter = 0
-    problems = []
-    for prompt in prompts:
-        if re.match(pattern, prompt.text):
-            counter += 1
-            problems.append(prompt)
-
-    print(counter)
 
 
 def start_mj_jobs():
@@ -297,7 +317,7 @@ def fill_missing_columns(missing_prompts, model_class):
     logging.info("Image generation complete.")
 
 
-def generate_image_comparison_csv(output_csv):
+def generate_master_csv(output_csv):
     from collections import defaultdict
 
     # Fetch all prompts
@@ -417,3 +437,37 @@ def count_duplicate_images():
         )
     else:
         print("No images found.")
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Image generation utility functions")
+    parser.add_argument("function", help="Function to run")
+    parser.add_argument("args", nargs="*", help="Arguments for the function")
+
+    args = parser.parse_args()
+
+    function_map = {
+        "test_model": test_model,
+        "generate_master_csv": generate_master_csv,
+        "generate_images": generate_images,
+    }
+
+    if args.function in function_map:
+        func = function_map[args.function]
+        try:
+            func(*args.args)
+        except TypeError as e:
+            print(f"Error: {e}")
+            print(f"Usage: python util.py {args.function} [arguments]")
+            print(
+                f"Function '{args.function}' signature: {func.__code__.co_varnames[:func.__code__.co_argcount]}"
+            )
+    else:
+        print(f"Unknown function: {args.function}")
+        print("Available functions:")
+        for func_name in function_map.keys():
+            print(f"- {func_name}")
+
+
+if __name__ == "__main__":
+    main()

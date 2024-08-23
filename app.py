@@ -44,7 +44,7 @@ async def choose_prompt():
         "images": [
             {
                 "image_id": str(image.id),
-                "image_url": util.transform_img_url(str(image.image_url)),
+                "image_url": image.image_url,
             }
             for image in selected_images
         ],
