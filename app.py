@@ -78,21 +78,28 @@ async def select_favorite(selection: FavoriteSelection):
             str(selection.winner_id),
         )
 
-        choices = [
+        image_ids = [
             selection.image1_id,
             selection.image2_id,
             selection.image3_id,
             selection.image4_id,
         ]
-        winner_index = choices.index(selection.winner_id)
-        ratings = db.get_model_ratings_from_image_ids(choices)
+
+        # Get model ratings from image IDs
+        ratings = db.get_model_ratings_from_image_ids(image_ids)
+
+        # Find the winner index
+        winner_index = image_ids.index(selection.winner_id)
+        winner_model_id = ratings[winner_index][1]
+
+        # Update ratings
         updated_ratings = util.update_ratings(winner_index, ratings)
+
+        # Write updated rankings to the database
         db.bulk_write_rankings(updated_ratings)
 
-        winner_model = ratings[winner_index][1]
-
         return {
-            "winner_model": winner_model,
+            "winner_model": winner_model_id,
         }
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
