@@ -102,14 +102,29 @@ def write_comparison(prompt_id, image1_id, image2_id, image3_id, image4_id, winn
 def read_comparisons(
     id: Optional[UUID4] = None,
 ) -> Union[Comparison, List[Comparison], None]:
+    query = supabase.table("comparisons").select("*")
+
     if id:
-        result = supabase.table("comparisons").select("*").eq("id", id).execute()
+        result = query.eq("id", id).execute()
         if result.data:
             return Comparison(**result.data[0])
         return None
     else:
-        result = supabase.table("comparisons").select("*").execute()
-        return [Comparison(**item) for item in result.data]
+        all_comparisons = []
+        page = 1
+        page_size = 1000  # Maximum allowed by Supabase
+
+        while True:
+            result = query.range((page - 1) * page_size, page * page_size - 1).execute()
+            comparisons = [Comparison(**item) for item in result.data]
+            all_comparisons.extend(comparisons)
+
+            if len(comparisons) < page_size:
+                break
+
+            page += 1
+
+        return all_comparisons
 
 
 def delete_comparisons_by_image_id(image_id):
