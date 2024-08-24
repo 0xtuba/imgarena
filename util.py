@@ -170,7 +170,7 @@ def generate_images(model_name: str):
     logging.info(f"Image generation completed for model: {model_name}")
 
 
-def update_elo(winner_rating, loser_rating, k_factor=32, win_loss_multiplier=1.1):
+def update_elo(winner_rating, loser_rating, k_factor=32, win_loss_multiplier=1):
     expected_winner = 1 / (1 + 10 ** ((loser_rating - winner_rating) / 400))
     winner_new_rating = (
         winner_rating + k_factor * (1 - expected_winner) * win_loss_multiplier
