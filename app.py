@@ -38,7 +38,7 @@ async def choose_prompt():
 
     # Select 4 random images or all if there are fewer than 4
     selected_images = random.sample(images, min(4, len(images)))
-    return {
+    res = {
         "prompt_id": str(prompt.id),
         "prompt": prompt.text,
         "images": [
@@ -49,6 +49,7 @@ async def choose_prompt():
             for image in selected_images
         ],
     }
+    return res
 
 
 @app.get("/leaderboard")
@@ -90,16 +91,12 @@ async def select_favorite(selection: FavoriteSelection):
 
         # Find the winner index
         winner_index = image_ids.index(selection.winner_id)
-        winner_model_id = ratings[winner_index][1]
 
-        # Update ratings
         updated_ratings = util.update_ratings(winner_index, ratings)
-
-        # Write updated rankings to the database
         db.bulk_write_rankings(updated_ratings)
 
         return {
-            "winner_model": winner_model_id,
+            "winner_model": ratings[winner_index][1],
         }
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
