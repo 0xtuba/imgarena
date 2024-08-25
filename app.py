@@ -83,19 +83,18 @@ async def select_favorite(selection: FavoriteSelection):
             str(selection.image4_id),
             str(selection.winner_id),
         )
-
         image_ids = [
-            selection.image1_id,
-            selection.image2_id,
-            selection.image3_id,
-            selection.image4_id,
+            str(selection.image1_id),
+            str(selection.image2_id),
+            str(selection.image3_id),
+            str(selection.image4_id),
         ]
 
         # Get model ratings from image IDs
         ratings = db.get_model_ratings_from_image_ids(image_ids)
 
         # Find the winner index
-        winner_index = image_ids.index(selection.winner_id)
+        winner_index = image_ids.index(str(selection.winner_id))
 
         updated_ratings = util.update_ratings(winner_index, ratings)
         logger.info(

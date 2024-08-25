@@ -102,7 +102,7 @@ def write_comparison(prompt_id, image1_id, image2_id, image3_id, image4_id, winn
 def read_comparisons(
     id: Optional[UUID4] = None,
 ) -> Union[Comparison, List[Comparison], None]:
-    query = supabase.table("comparisons").select("*")
+    query = supabase.table("comparisons").select("*").order("created_at", desc=True)
 
     if id:
         result = query.eq("id", id).execute()
@@ -353,8 +353,11 @@ def get_model_ratings_from_image_ids(
         if len(images_data) != 4:
             raise ValueError(f"Expected 4 results, but got {len(images_data)}")
 
+        # Create a dictionary mapping image_id to model_id
+        image_to_model = {img["id"]: img["model_id"] for img in images_data}
+
         # Extract model_ids
-        model_ids = [img["model_id"] for img in images_data]
+        model_ids = list(image_to_model.values())
 
         # Query rankings table
         rankings_response = (
@@ -371,21 +374,18 @@ def get_model_ratings_from_image_ids(
             r["model_id"]: {"elo_score": r["elo_score"], "name": r["models"]["name"]}
             for r in rankings_response.data
         }
-        # Combine the results
+
+        # Combine the results in the order of input image_ids
         result = []
-        for img in images_data:
-            model_id = img["model_id"]
+        for image_id in image_ids:
+            model_id = image_to_model[image_id]
             res = rankings_data.get(model_id, None)
+            if res is None:
+                raise ValueError(f"No ranking data found for model_id: {model_id}")
             elo_score = res["elo_score"]
             name = res["name"]
 
-            result.append(
-                (
-                    model_id,
-                    name,
-                    elo_score,
-                )
-            )
+            result.append((model_id, name, elo_score))
 
         return result
     except Exception as e:
