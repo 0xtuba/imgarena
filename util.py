@@ -173,15 +173,18 @@ def process_model(
         )
 
 
-def generate_images(model_name: str):
+def generate_images(model_name: str, category: str):
     logging.basicConfig(
-        filename="image_generation_2.log",
+        filename=f"image_generation_{model_name}_{category}.log",
         level=logging.INFO,
         format="%(asctime)s - %(levelname)s - %(message)s",
     )
-    prompts = db.read_prompts()
+    prompts = db.read_prompts(category=category)
+    total_prompts = len(prompts)
 
-    max_workers = min(8, len(prompts))  # Adjust based on available prompts
+    logging.info(f"Total prompts to process: {total_prompts}")
+
+    max_workers = min(8, total_prompts)  # Adjust based on available prompts
 
     model_class = MODEL_MAP.get(model_name)
     if model_class is None:
@@ -189,8 +192,11 @@ def generate_images(model_name: str):
 
     def process_prompt(prompt, index):
         model = model_class(prompt.text)
-        return process_model(prompt, model, index, 0, len(prompts), 1)
+        result = process_model(prompt, model, index, 0, total_prompts, 1)
+        logging.info(f"Processed prompt {index + 1}/{total_prompts}")
+        return result
 
+    completed_prompts = 0
     with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
         futures = [
             executor.submit(process_prompt, prompt, i)
@@ -200,10 +206,16 @@ def generate_images(model_name: str):
         for future in concurrent.futures.as_completed(futures):
             try:
                 future.result()
+                completed_prompts += 1
+                if completed_prompts % 10 == 0:  # Log progress every 10 prompts
+                    logging.info(
+                        f"Progress: {completed_prompts}/{total_prompts} prompts completed"
+                    )
             except Exception as e:
                 logging.error(f"Error processing prompt: {str(e)}")
 
     logging.info(f"Image generation completed for model: {model_name}")
+    logging.info(f"Total prompts processed: {completed_prompts}/{total_prompts}")
 
 
 def update_elo(winner_rating, loser_rating, k_factor=8, win_loss_multiplier=1):

@@ -94,8 +94,18 @@ class StableDiffusion3(TTIModel):
         )
 
     def generate_image(self) -> Any:
-        additional_params = {}
-        return super().generate_image(additional_params)
+        handler = fal_client.submit(
+            "fal-ai/stable-diffusion-v3-medium",
+            arguments={
+                "prompt": self.prompt,
+                "image_size": "square",
+            },
+        )
+        res = handler.get()
+        if res["images"]:
+            return res["images"][0]["url"]
+        else:
+            return None
 
 
 class FluxPro(TTIModel):
@@ -108,8 +118,18 @@ class FluxPro(TTIModel):
         )
 
     def generate_image(self) -> Any:
-        additional_params = {}
-        return super().generate_image(additional_params)
+        handler = fal_client.submit(
+            "fal-ai/flux-pro",
+            arguments={
+                "prompt": self.prompt,
+                "image_size": "square",
+            },
+        )
+        res = handler.get()
+        if res["images"]:
+            return res["images"][0]["url"]
+        else:
+            return None
 
 
 class FluxSchnell(TTIModel):
@@ -122,8 +142,18 @@ class FluxSchnell(TTIModel):
         )
 
     def generate_image(self) -> Any:
-        additional_params = {}
-        return super().generate_image(additional_params)
+        handler = fal_client.submit(
+            "fal-ai/flux/schnell",
+            arguments={
+                "prompt": self.prompt,
+                "image_size": "square",
+            },
+        )
+        res = handler.get()
+        if res["images"]:
+            return res["images"][0]["url"]
+        else:
+            return None
 
 
 class FluxDev(TTIModel):
@@ -136,8 +166,18 @@ class FluxDev(TTIModel):
         )
 
     def generate_image(self) -> Any:
-        additional_params = {}
-        return super().generate_image(additional_params)
+        handler = fal_client.submit(
+            "fal-ai/flux/dev",
+            arguments={
+                "prompt": self.prompt,
+                "image_size": "square",
+            },
+        )
+        res = handler.get()
+        if res["images"]:
+            return res["images"][0]["url"]
+        else:
+            return None
 
 
 class Kandinsky22(TTIModel):

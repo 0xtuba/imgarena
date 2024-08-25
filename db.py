@@ -65,6 +65,21 @@ def get_utc_timestamp():
     return datetime.now(UTC).isoformat()
 
 
+def get_prompt_categories() -> List[str]:
+    try:
+        response = supabase.rpc("get_prompt_categories").execute()
+
+        if hasattr(response, "error") and response.error is not None:
+            raise Exception(f"Supabase RPC error: {response.error}")
+
+        categories = [item["category"] for item in response.data]
+        return categories
+
+    except Exception as e:
+        print(f"An error occurred while fetching categories: {e}")
+        raise
+
+
 def write_comparison(prompt_id, image1_id, image2_id, image3_id, image4_id, winner_id):
     required_fields = {
         "prompt_id": prompt_id,

@@ -1,7 +1,7 @@
 import logging
 import random
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import UUID4, BaseModel
 
@@ -34,17 +34,29 @@ async def root():
     return {"message": "Hello World"}
 
 
-@app.get("/prompt")
-async def choose_prompt():
-    prompts = db.read_prompts(category="random")
-    prompt = random.choice(prompts)
+@app.get("/categories")
+async def categories():
+    return db.get_prompt_categories()
 
+
+@app.get("/prompt")
+async def choose_prompt(
+    category: str = Query(default="random", description="Category of the prompt"),
+):
+    prompts = db.read_prompts(category=category)
+    if not prompts:
+        raise HTTPException(
+            status_code=404, detail=f"No prompts found for category: {category}"
+        )
+
+    prompt = random.choice(prompts)
     images = db.read_images(prompt_id=prompt.id)
 
     # Select 4 random images or all if there are fewer than 4
     selected_images = random.sample(images, min(4, len(images)))
     res = {
         "prompt_id": str(prompt.id),
+        "prompt_category": prompt.category,
         "prompt": prompt.text,
         "images": [
             {
