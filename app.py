@@ -1,3 +1,4 @@
+import logging
 import random
 
 from fastapi import FastAPI, HTTPException
@@ -8,6 +9,10 @@ import db
 import util
 
 app = FastAPI()
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 
 # Add CORS middleware
 app.add_middleware(
@@ -93,6 +98,10 @@ async def select_favorite(selection: FavoriteSelection):
         winner_index = image_ids.index(selection.winner_id)
 
         updated_ratings = util.update_ratings(winner_index, ratings)
+        logger.info(
+            f"Updated ratings: winner_index={winner_index}, ratings={ratings}, updated_ratings={updated_ratings}"
+        )
+
         db.bulk_write_rankings(updated_ratings)
 
         return {
