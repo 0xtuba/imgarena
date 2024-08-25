@@ -170,7 +170,7 @@ def generate_images(model_name: str):
     logging.info(f"Image generation completed for model: {model_name}")
 
 
-def update_elo(winner_rating, loser_rating, k_factor=16, win_loss_multiplier=1.01):
+def update_elo(winner_rating, loser_rating, k_factor=8, win_loss_multiplier=1.02):
     expected_winner = 1 / (1 + 10 ** ((loser_rating - winner_rating) / 400))
     winner_new_rating = (
         winner_rating + k_factor * (1 - expected_winner) * win_loss_multiplier
@@ -181,7 +181,7 @@ def update_elo(winner_rating, loser_rating, k_factor=16, win_loss_multiplier=1.0
     return winner_new_rating, loser_new_rating
 
 
-def update_ratings(selected_index, model_ratings, k_factor=16):
+def update_ratings(selected_index, model_ratings):
     """
     Update ratings based on the selected winner.
 
@@ -198,9 +198,7 @@ def update_ratings(selected_index, model_ratings, k_factor=16):
 
     for i, (model, _, rating) in enumerate(model_ratings):
         if i != selected_index:
-            new_winner_rating, loser_rating = update_elo(
-                winner_rating, rating, k_factor
-            )
+            new_winner_rating, loser_rating = update_elo(winner_rating, rating)
             updated_ratings.append((model, loser_rating))
             winner_rating = new_winner_rating
         else:
