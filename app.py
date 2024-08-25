@@ -36,7 +36,7 @@ async def root():
 
 @app.get("/prompt")
 async def choose_prompt():
-    prompts = db.read_prompts()
+    prompts = db.read_prompts(category="random")
     prompt = random.choice(prompts)
 
     images = db.read_images(prompt_id=prompt.id)

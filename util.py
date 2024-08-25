@@ -103,11 +103,47 @@ def generate_prompts(num_prompts: int):
         return message.parsed.results
 
 
-def save_prompts():
-    prompts = generate_prompts(100)
+def generate_prompt_faces(num_prompts: int):
+    class ModelResponse(BaseModel):
+        results: list[str]
+
+    OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+    client = OpenAI(api_key=OPENAI_API_KEY)
+
+    completion = client.beta.chat.completions.parse(
+        messages=[
+            {
+                "role": "user",
+                "content": f"Generate {num_prompts} different descriptive prompts for my image generational model. These prompts must be all related to human faces, they can be portraits, photographs, candid photos, group photos or single face photos. Use variations of backgrounds, lighting, and facial expressions. Add a mixture of close-ups and full-body shots. You can also describe the color and style of clothing they are wearing if necessary. Just respond with the prompt description itself, not any titles or prefixes. The prompt should be between 30 to 50 words each.",
+            },
+        ],
+        model="gpt-4o-2024-08-06",
+        response_format=ModelResponse,
+    )
+
+    message = completion.choices[0].message
+    if message.parsed:
+        return message.parsed.results
+
+
+def remove_number_prompts():
+    import re
+
+    pattern = r"^\d+\.\s"
+    prompts = db.read_prompts()
+    counter = 0
+
     for prompt in prompts:
-        print(prompt)
-        db.write_prompt(prompt)
+        if re.match(pattern, prompt.text):
+            # Remove the number prefix
+            updated_text = re.sub(pattern, "", prompt.text)
+
+            # Update the prompt in the database
+            db.update_prompt(prompt.id, updated_text)
+
+            counter += 1
+
+    print(f"Updated {counter} prompts")
 
 
 def process_model(

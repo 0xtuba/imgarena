@@ -25,6 +25,7 @@ class Prompt(BaseModel):
     id: UUID4
     text: str
     created_at: datetime
+    category: str
 
 
 class Image(BaseModel):
@@ -197,14 +198,31 @@ def read_images(
         return all_images
 
 
-# Prompts table operations
-def write_prompt(text):
+def write_prompt(text: str, category: str):
     data = (
         supabase.table("prompts")
-        .insert({"text": text, "created_at": get_utc_timestamp()})
+        .insert({"text": text, "category": category, "created_at": get_utc_timestamp()})
         .execute()
     )
     return data
+
+
+def update_prompt(prompt_id: UUID4, new_text: str) -> dict:
+    try:
+        response = (
+            supabase.table("prompts")
+            .update({"text": new_text})
+            .eq("id", str(prompt_id))
+            .execute()
+        )
+
+        if response.data:
+            return {"success": True, "data": response.data[0]}
+        else:
+            return {"success": False, "error": "No prompt updated"}
+
+    except Exception as e:
+        return {"success": False, "error": str(e)}
 
 
 def get_prompt_by_text(text: str) -> Optional[Prompt]:
@@ -214,14 +232,20 @@ def get_prompt_by_text(text: str) -> Optional[Prompt]:
     return None
 
 
-def read_prompts(id: Optional[UUID4] = None) -> Union[Prompt, List[Prompt], None]:
+def read_prompts(
+    id: Optional[UUID4] = None, category: Optional[str] = None
+) -> Union[Prompt, List[Prompt], None]:
+    query = supabase.table("prompts").select("*")
+
     if id:
-        result = supabase.table("prompts").select("*").eq("id", id).execute()
+        result = query.eq("id", id).execute()
         if result.data:
             return Prompt(**result.data[0])
         return None
     else:
-        result = supabase.table("prompts").select("*").execute()
+        if category:
+            query = query.eq("category", category)
+        result = query.execute()
         return [Prompt(**item) for item in result.data]
 
 
