@@ -175,7 +175,7 @@ def process_model(
 
 def generate_images(model_name: str, category: str):
     logging.basicConfig(
-        filename=f"image_generation_{model_name}_{category}.log",
+        filename=f"logs/image_generation_{model_name}_{category}.log",
         level=logging.INFO,
         format="%(asctime)s - %(levelname)s - %(message)s",
     )
@@ -261,7 +261,7 @@ def update_ratings(selected_index, model_ratings):
 def initialize_ratings():
     models = db.read_models()
     for model in models:
-        db.write_ranking(model_id=model.id, elo_score=1000)
+        db.write_ranking(model_id=model.id, elo_score=1000, category="people")
 
 
 def start_mj_jobs():
@@ -324,7 +324,8 @@ def check_missing(model_id, filename):
         Prompt(
             id=UUID(row["prompt_id"]),
             text=row["prompt_text"],
-            created_at=datetime.now(),  # Note: Using current time as creation time
+            created_at=datetime.now(),
+            category="",
         )
         for row in rows
         if not row.get(column_name)
@@ -338,7 +339,7 @@ def check_missing(model_id, filename):
 
 def fill_missing_columns(missing_prompts, model_class):
     logging.basicConfig(
-        filename="fill_missing_columns.log",
+        filename="logs/fill_missing_columns.log",
         level=logging.INFO,
         format="%(asctime)s - %(levelname)s - %(message)s",
     )

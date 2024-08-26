@@ -273,7 +273,7 @@ def fetch_unprocessed_prompts() -> List[Prompt]:
 
 
 # Rankings table operations
-def write_ranking(model_id, elo_score):
+def write_ranking(model_id, elo_score, category):
     data = (
         supabase.table("rankings")
         .upsert(
@@ -281,6 +281,7 @@ def write_ranking(model_id, elo_score):
                 "model_id": model_id,
                 "elo_score": elo_score,
                 "created_at": get_utc_timestamp(),
+                "category": category,
             }
         )
         .execute()
@@ -288,17 +289,25 @@ def write_ranking(model_id, elo_score):
     return data
 
 
-def bulk_write_rankings(rankings: List[Tuple[str, float]]):
+def bulk_write_rankings(rankings: List[Tuple[str, float]], category: str):
     current_time = get_utc_timestamp()
     data_to_update = [
-        {"model_id": model_id, "elo_score": elo_score, "created_at": current_time}
+        {
+            "model_id": model_id,
+            "category": category,
+            "elo_score": elo_score,
+            "created_at": current_time,
+        }
         for model_id, elo_score in rankings
     ]
 
     try:
         response = (
             supabase.table("rankings")
-            .upsert(data_to_update, on_conflict="model_id")
+            .upsert(
+                data_to_update,
+                on_conflict="model_id,category",
+            )
             .execute()
         )
 
@@ -469,9 +478,10 @@ def get_all_rankings_with_names() -> List[Tuple[str, str, float]]:
         raise
 
 
-def get_leaderboard():
+def get_leaderboard(category: Optional[str] = None):
     try:
-        response = supabase.rpc("get_rankings_with_win_counts", {}).execute()
+        params = {"p_category": category} if category else {}
+        response = supabase.rpc("get_rankings_with_win_counts", params).execute()
 
         if hasattr(response, "error") and response.error is not None:
             raise Exception(f"Supabase query error: {response.error}")

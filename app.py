@@ -71,7 +71,7 @@ async def choose_prompt(
 
 @app.get("/leaderboard")
 async def leaderboard():
-    leaderboard = db.get_leaderboard()
+    leaderboard = db.get_leaderboard("random")
     return leaderboard
 
 
@@ -112,8 +112,8 @@ async def select_favorite(selection: FavoriteSelection):
         logger.info(
             f"Updated ratings: winner_index={winner_index}, ratings={ratings}, updated_ratings={updated_ratings}"
         )
-
-        db.bulk_write_rankings(updated_ratings)
+        prompt = db.read_prompts(id=selection.prompt_id)
+        db.bulk_write_rankings(updated_ratings, prompt.category)
 
         return {
             "winner_model": ratings[winner_index][1],
