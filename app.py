@@ -70,8 +70,10 @@ async def choose_prompt(
 
 
 @app.get("/leaderboard")
-async def leaderboard():
-    leaderboard = db.get_leaderboard("random")
+async def leaderboard(
+    category: str = Query(default="random", description="Category"),
+):
+    leaderboard = db.get_leaderboard(category=category)
     return leaderboard
 
 
