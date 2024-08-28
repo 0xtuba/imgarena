@@ -61,7 +61,7 @@ async def choose_prompt(
         "images": [
             {
                 "image_id": str(image.id),
-                "image_url": image.image_url,
+                "image_url": f"https://pub-9fea5fa1561e43b7b29b51209b843590.r2.dev/{str(image.id)}.webp",
             }
             for image in selected_images
         ],

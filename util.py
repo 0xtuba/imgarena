@@ -267,7 +267,7 @@ def initialize_ratings():
 def start_mj_jobs():
     model = adapter.Midjourney("")
     logging.basicConfig(
-        filename="image_generation.log",
+        filename="logs/mj_image_generation.log",
         level=logging.INFO,
         format="%(asctime)s - %(levelname)s - %(message)s",
     )

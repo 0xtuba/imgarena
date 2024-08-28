@@ -222,8 +222,6 @@ class DALLE3(TTIModel):
 
 
 class Midjourney(TTIModel):
-    from openai import OpenAI
-
     def __init__(self, prompt: str):
         super().__init__(
             prompt=prompt,
