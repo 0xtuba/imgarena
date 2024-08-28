@@ -41,7 +41,7 @@ async def categories():
 
 @app.get("/prompt")
 async def choose_prompt(
-    category: str = Query(default="random", description="Category of the prompt"),
+    category: str = Query(default="people", description="Category of the prompt"),
 ):
     prompts = db.read_prompts(category=category)
     if not prompts:

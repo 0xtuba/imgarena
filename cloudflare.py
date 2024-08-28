@@ -1,7 +1,6 @@
 import logging
 import os
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from io import BytesIO
 
 import requests
 from dotenv import load_dotenv
